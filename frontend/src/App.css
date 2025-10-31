@@ -1,0 +1,68 @@
+/* App Layout (scoped) */
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #1f1f1f;
+  border-bottom: 1px solid #333;
+}
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.nav {
+  display: flex;
+  gap: 12px;
+}
+.nav a {
+  color: #c5c5c5;
+  text-decoration: none;
+}
+.nav a:hover {
+  color: #e0e0e0;
+}
+/* Unified nav button styling to blend with header */
+.nav .nav-btn {
+  background: transparent;
+  border: none;
+  color: #c5c5c5;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.nav .nav-btn:hover {
+  color: #e0e0e0;
+  background: rgba(255, 255, 255, 0.06);
+}
+.nav .nav-btn:focus-visible {
+  outline: 2px solid #646cff;
+  outline-offset: 2px;
+}
+
+/* Per-action polish */
+.nav .chat-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav .logout-btn {
+  color: #ffb3b3;
+}
+.nav .logout-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 87, 87, 0.12);
+}
+.app-main {
+  padding: 20px;
+}
+.app-main.centered {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

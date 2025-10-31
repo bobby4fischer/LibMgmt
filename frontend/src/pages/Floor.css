@@ -1,0 +1,17 @@
+/* Simple floor background — no walls/ceiling/screen */
+.floor {
+  position: relative;
+  border: 1px solid #2f2f2f;
+  border-radius: 16px;
+  padding: 18px;
+  background:
+    linear-gradient(180deg, #dcdcdc 0%, #d5d5d5 100%),
+    repeating-linear-gradient(90deg, rgba(140,140,140,0.25) 0 1px, rgba(0,0,0,0) 1px 40px),
+    repeating-linear-gradient(0deg, rgba(140,140,140,0.25) 0 1px, rgba(0,0,0,0) 1px 40px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+}
+
+/* Bounded area for absolute seat map */
+.floor .seat-map { position: relative; }
+/* Let the map center within the floor */
+.floor { display: flex; justify-content: center; }
