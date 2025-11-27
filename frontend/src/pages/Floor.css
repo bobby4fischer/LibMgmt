@@ -1,17 +1,47 @@
-/* Simple floor background — no walls/ceiling/screen */
+/* Elegant hall floor with warm wood texture */
 .floor {
   position: relative;
-  border: 1px solid #2f2f2f;
-  border-radius: 16px;
-  padding: 18px;
+  border: 1px solid #b99773;
+  border-radius: 18px;
+  padding: 24px;
+  overflow: hidden; /* clip decorative overlays */
+  /* Layered background: base oak tone + subtle plank and grain */
   background:
-    linear-gradient(180deg, #dcdcdc 0%, #d5d5d5 100%),
-    repeating-linear-gradient(90deg, rgba(140,140,140,0.25) 0 1px, rgba(0,0,0,0) 1px 40px),
-    repeating-linear-gradient(0deg, rgba(140,140,140,0.25) 0 1px, rgba(0,0,0,0) 1px 40px);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+    radial-gradient(1200px 600px at 10% 0%, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.06) 60%, rgba(0,0,0,0) 100%),
+    radial-gradient(1000px 500px at 90% 100%, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.02) 55%, rgba(0,0,0,0) 100%),
+    repeating-linear-gradient(90deg, rgba(140, 90, 40, 0.06) 0 16px, rgba(0,0,0,0) 16px 18px),
+    repeating-linear-gradient(0deg, rgba(140, 90, 40, 0.04) 0 14px, rgba(0,0,0,0) 14px 22px),
+    linear-gradient(180deg, #e9d8c3 0%, #e1cdb8 40%, #d6bf9f 100%);
+  background-blend-mode: soft-light, multiply, normal, normal, normal;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
 /* Bounded area for absolute seat map */
 .floor .seat-map { position: relative; }
 /* Let the map center within the floor */
 .floor { display: flex; justify-content: center; }
+
+/* Soft inner vignette to focus the map */
+.floor::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 140px rgba(0,0,0,0.18);
+}
+
+/* Subtle central walkway to guide the eye */
+.floor::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  left: 12%;
+  right: 12%;
+  border-radius: 14px;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(180deg, rgba(255,255,255,0.16) 0 6px, rgba(255,255,255,0.08) 6px 14px),
+    linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 100%);
+  mix-blend-mode: soft-light;
+}

@@ -63,7 +63,14 @@ export default function SeatPopover({ seatId, onClose }) {
         <div className="popover-body">
           {seat.bookedBy ? (
             <>
-              <div>Booked by: <strong>{seat.bookedBy}</strong></div>
+              {seat.friendLabel ? (
+                <>
+                  <div>Assigned friend: <strong>{seat.friendLabel}</strong></div>
+                  <div>Booking owner: <strong>{seat.bookedBy}</strong></div>
+                </>
+              ) : (
+                <div>Booked by: <strong>{seat.bookedBy}</strong></div>
+              )}
               <div>Time left: <strong>{remaining}</strong></div>
               {canUnbook && (
                 <button className="danger-btn" onClick={handleUnbook} disabled={isSubmitting}>

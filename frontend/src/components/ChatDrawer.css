@@ -32,6 +32,11 @@
   border-bottom: 1px solid #333;
 }
 .chat-title { font-weight: 700; }
+.status-dot { display: inline-block; margin-right: 6px; }
+.status-dot.connected { color: #3fb353; }
+.status-dot.connecting { color: #646cff; }
+.status-dot.error { color: #e0a800; }
+.status-dot.disconnected { color: #dc3545; }
 .chat-title .online {
   font-weight: 500;
   font-size: 0.8rem;
@@ -143,6 +148,17 @@
   border: none;
   color: #a0a0a0;
   text-align: center;
+}
+.new-divider {
+  align-self: center;
+  background: #203a4f;
+  color: #cfe9ff;
+  border: 1px solid #2f5f86;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25);
 }
 .bubble-text {
   font-size: 0.95rem;

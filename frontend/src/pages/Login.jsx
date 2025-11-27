@@ -25,12 +25,23 @@ export default function Login() {
     }
     
     try {
+      const offline = String(import.meta?.env?.VITE_OFFLINE_MODE || '').toLowerCase() === 'true'
+      if (offline) {
+        const raw = localStorage.getItem('SeatSyncUsers')
+        const users = raw ? JSON.parse(raw) : []
+        const found = users.find((u) => (u.email || '').toLowerCase() === email.toLowerCase() && u.password === password)
+        if (!found) throw new Error('Invalid credentials')
+        localStorage.setItem('SeatSyncToken', 'offline')
+        dispatch(loginSuccess({ id: found.id, name: found.name, email: found.email }))
+        navigate('/dashboard')
+        return
+      }
       const { data } = await client.post('/auth/login', { email, password })
       localStorage.setItem('SeatSyncToken', data.token)
       dispatch(loginSuccess(data.user))
       navigate('/dashboard')
     } catch (err) {
-      setError(err?.response?.data?.message || 'Login failed')
+      setError(err?.response?.data?.message || err?.message || 'Login failed')
       setIsLoading(false)
     }
   }

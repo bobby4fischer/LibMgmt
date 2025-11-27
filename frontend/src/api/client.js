@@ -1,8 +1,7 @@
 import axios from 'axios'
 
-const client = axios.create({
-  baseURL: 'http://localhost:5000/api',
-})
+const base = import.meta?.env?.VITE_API_URL || 'http://localhost:5000/api'
+const client = axios.create({ baseURL: base })
 
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('SeatSyncToken')

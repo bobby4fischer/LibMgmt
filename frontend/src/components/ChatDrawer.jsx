@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 
-export default function ChatDrawer({ open, onClose, user }) {
+export default function ChatDrawer({ open, onClose, user, onUnread }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [onlineCount, setOnlineCount] = useState(0)
@@ -9,8 +9,14 @@ export default function ChatDrawer({ open, onClose, user }) {
   const [activeContact, setActiveContact] = useState(null)
   const [contactQuery, setContactQuery] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [connStatus, setConnStatus] = useState('connecting')
   const messagesRef = useRef(null)
   const socketRef = useRef(null)
+  const isOpenRef = useRef(open)
+  const activeContactRef = useRef(null)
+  const userNameRef = useRef(user?.name || null)
+  const [lastReadAtMap, setLastReadAtMap] = useState({})
+  const bubbleRefs = useRef({})
 
   const formatTime = (ts) => {
     if (!ts) return ''
@@ -27,19 +33,38 @@ export default function ChatDrawer({ open, onClose, user }) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [open, onClose])
 
+  // Keep refs in sync with latest state so socket listeners can read current values
+  useEffect(() => { isOpenRef.current = open }, [open])
+  useEffect(() => { activeContactRef.current = activeContact }, [activeContact])
+  useEffect(() => { userNameRef.current = user?.name || null }, [user?.name])
+
+  const parseTs = (ts) => {
+    if (!ts) return 0
+    try { return new Date(ts).getTime() } catch { return 0 }
+  }
+
+  // Scroll behavior: always show the newest messages on open/switch
   useEffect(() => {
-    if (messagesRef.current) {
-      messagesRef.current.scrollTop = messagesRef.current.scrollHeight
-    }
-  }, [messages])
+    if (!messagesRef.current) return
+    if (!open) return
+    if (!activeContact) return
+    messagesRef.current.scrollTop = messagesRef.current.scrollHeight
+  }, [open, activeContact, messages])
 
   useEffect(() => {
-    if (!open) return
+    const offline = String(import.meta?.env?.VITE_OFFLINE_MODE || '').toLowerCase() === 'true'
+    if (offline) {
+      setConnStatus('offline')
+      return () => {}
+    }
     const token = localStorage.getItem('SeatSyncToken')
-    const socket = io('http://localhost:5000', { auth: { token } })
+    const socket = io('http://localhost:5000', { auth: { token }, reconnection: true, reconnectionAttempts: Infinity, reconnectionDelayMax: 5000 })
     socketRef.current = socket
 
-    socket.on('connect', () => {})
+    socket.on('connect', () => setConnStatus('connected'))
+    socket.on('disconnect', () => setConnStatus('disconnected'))
+    socket.on('connect_error', () => setConnStatus('error'))
+    socket.on('reconnect', () => setConnStatus('connected'))
     socket.on('chat:online', (count) => setOnlineCount(Number(count) || 0))
 
     socket.on('chat:contacts', (list) => {
@@ -49,17 +74,18 @@ export default function ChatDrawer({ open, onClose, user }) {
     })
 
     socket.on('chat:dm:history', ({ peer, history }) => {
-      if (peer === activeContact) setMessages(history || [])
+      if (peer === activeContactRef.current) setMessages(history || [])
     })
 
     socket.on('chat:dm:message', (msg) => {
-      const me = user?.name
+      const me = userNameRef.current
       const involvesMe = msg.sender === me || msg.receiver === me
       if (!involvesMe) return
 
-      const matchesCurrent = activeContact && (
-        (msg.sender === activeContact && msg.receiver === me) ||
-        (msg.sender === me && msg.receiver === activeContact)
+      const ac = activeContactRef.current
+      const matchesCurrent = ac && (
+        (msg.sender === ac && msg.receiver === me) ||
+        (msg.sender === me && msg.receiver === ac)
       )
 
       if (matchesCurrent) {
@@ -67,8 +93,12 @@ export default function ChatDrawer({ open, onClose, user }) {
       } else if (msg.receiver === me) {
         // Ensure we can converse with non-reserved senders: add to contacts and open conversation
         setContacts((prev) => (prev.includes(msg.sender) ? prev : [msg.sender, ...prev]))
-        // Switch to the sender and load history (which will include this message)
-        selectContact(msg.sender)
+        // Increment unread if chat is closed or message isn't in the active conversation
+        if (typeof onUnread === 'function' && (!isOpenRef.current || !matchesCurrent)) {
+          try { onUnread(msg.sender) } catch {}
+        }
+        // If chat is open, switch to the sender and load history (which will include this message)
+        if (isOpenRef.current) selectContact(msg.sender)
       }
     })
 
@@ -76,7 +106,7 @@ export default function ChatDrawer({ open, onClose, user }) {
       socket.disconnect()
       socketRef.current = null
     }
-  }, [open])
+  }, [])
 
   // If a contact disappears (released all seats), gracefully exit the conversation
   useEffect(() => {
@@ -89,10 +119,17 @@ export default function ChatDrawer({ open, onClose, user }) {
   const selectContact = (name) => {
     // Prevent re-selecting the same contact to avoid glitches
     if (name === activeContact) return
-    
+    // Mark previous conversation as read at its latest message timestamp
+    const prev = activeContactRef.current
+    if (prev && messages.length) {
+      const lastTs = parseTs(messages[messages.length - 1]?.timestamp)
+      setLastReadAtMap((m) => ({ ...m, [prev]: lastTs || Date.now() }))
+    }
+
     setIsLoading(true)
     setActiveContact(name)
     setMessages([])
+    bubbleRefs.current = {}
     
     if (socketRef.current) {
       socketRef.current.emit('chat:dm:history', { peer: name })
@@ -107,19 +144,7 @@ export default function ChatDrawer({ open, onClose, user }) {
     const text = input.trim()
     if (!text) return
     if (socketRef.current && activeContact) {
-      // Create a new message object with a temporary ID
-      const newMessage = {
-        id: Date.now().toString(),
-        sender: user?.name,
-        receiver: activeContact,
-        text: text,
-        timestamp: new Date().toISOString()
-      }
-      
-      // Add message to local state immediately
-      setMessages(prev => [...prev, newMessage])
-      
-      // Send to server
+      // Send to server only; rely on server echo to avoid duplicates
       socketRef.current.emit('chat:dm:send', { to: activeContact, text })
     }
     setInput('')
@@ -132,12 +157,21 @@ export default function ChatDrawer({ open, onClose, user }) {
     }
   }
 
+  // When closing the drawer, mark the current conversation as read
+  useEffect(() => {
+    if (open) return
+    if (activeContact && messages.length) {
+      const lastTs = parseTs(messages[messages.length - 1]?.timestamp)
+      setLastReadAtMap((m) => ({ ...m, [activeContact]: lastTs || Date.now() }))
+    }
+  }, [open])
+
   return (
     <>
       {open && <div className="chat-overlay" onClick={onClose} />}
       <aside className={`chat-drawer ${open ? 'open' : ''}`} aria-hidden={!open}>
         <div className="chat-header">
-          <div className="chat-title">Chat Room <span className="online">• {onlineCount} online</span></div>
+          <div className="chat-title">Chat Room <span className={`status-dot ${connStatus}`}>•</span> <span className="online">{onlineCount} online</span></div>
           <button className="chat-close" aria-label="Close chat" title="Close" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -223,12 +257,32 @@ export default function ChatDrawer({ open, onClose, user }) {
                       <div className="empty-hint">Send a message to start the conversation</div>
                     </div>
                   ) : (
-                    messages.map((m) => (
-                      <div key={m.id} className={`bubble ${m.sender === user?.name ? 'me' : ''}`}>
-                        <div className="bubble-text">{m.text}</div>
-                        {m.timestamp && <div className="bubble-time">{formatTime(m.timestamp)}</div>}
-                      </div>
-                    ))
+                    (() => {
+                      const last = lastReadAtMap[activeContact] || 0
+                      const pieces = []
+                      let insertedDivider = false
+                      for (let i = 0; i < messages.length; i++) {
+                        const m = messages[i]
+                        const isUnread = last && parseTs(m.timestamp) > last
+                        if (!insertedDivider && isUnread) {
+                          pieces.push(
+                            <div key={`new-${m.id}`} className="new-divider" aria-label="New messages">New messages</div>
+                          )
+                          insertedDivider = true
+                        }
+                        pieces.push(
+                          <div
+                            key={m.id}
+                            ref={(el) => { if (el) bubbleRefs.current[m.id] = el }}
+                            className={`bubble ${m.sender === user?.name ? 'me' : ''}`}
+                          >
+                            <div className="bubble-text">{m.text}</div>
+                            {m.timestamp && <div className="bubble-time">{formatTime(m.timestamp)}</div>}
+                          </div>
+                        )
+                      }
+                      return pieces
+                    })()
                   )}
                 </div>
                 <div className="chat-input">

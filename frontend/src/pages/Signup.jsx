@@ -26,12 +26,26 @@ export default function Signup() {
     }
     
     try {
+      const offline = String(import.meta?.env?.VITE_OFFLINE_MODE || '').toLowerCase() === 'true'
+      if (offline) {
+        const raw = localStorage.getItem('SeatSyncUsers')
+        const users = raw ? JSON.parse(raw) : []
+        const exists = users.some((u) => (u.email || '').toLowerCase() === email.toLowerCase())
+        if (exists) throw new Error('Email already registered')
+        const user = { id: String(users.length + 1), name, email: email.toLowerCase(), password }
+        users.push(user)
+        localStorage.setItem('SeatSyncUsers', JSON.stringify(users))
+        localStorage.setItem('SeatSyncToken', 'offline')
+        dispatch(signupSuccess({ id: user.id, name: user.name, email: user.email }))
+        navigate('/dashboard')
+        return
+      }
       const { data } = await client.post('/auth/signup', { name, email, password })
       localStorage.setItem('SeatSyncToken', data.token)
       dispatch(signupSuccess(data.user))
       navigate('/dashboard')
     } catch (err) {
-      setError(err?.response?.data?.message || 'Signup failed')
+      setError(err?.response?.data?.message || err?.message || 'Signup failed')
       setIsLoading(false)
     }
   }

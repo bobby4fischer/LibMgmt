@@ -50,6 +50,21 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  position: relative;
+}
+.nav .chat-btn .badge {
+  position: absolute;
+  right: -8px;
+  bottom: -6px;
+  background: #ff4d4f; /* subtle red for attention */
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 16px;
+  min-width: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 2px #1f1f1f; /* ring matching header background */
 }
 .nav .logout-btn {
   color: #ffb3b3;

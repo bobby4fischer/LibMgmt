@@ -4,10 +4,18 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
 import Layout from './components/Layout'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
+import { useEffect } from 'react'
+import { verifySession } from './features/auth/authSlice'
 
 function App() {
   const { status } = useSelector((state) => state.auth)
+  const dispatch = useDispatch()
+
+  useEffect(() => {
+    const token = localStorage.getItem('SeatSyncToken')
+    if (token) dispatch(verifySession())
+  }, [dispatch])
 
   return (
     <BrowserRouter>
